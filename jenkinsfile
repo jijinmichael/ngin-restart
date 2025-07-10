@@ -2,11 +2,16 @@ pipeline {
     agent any
 
     triggers {
-        githubPush() // Auto-trigger on GitHub push (via webhook)
+        githubPush() // Trigger on GitHub push (requires webhook)
+    }
+
+    environment {
+        HOST = "172.18.0.1"
+        SSH_OPTS = "-o StrictHostKeyChecking=no"
     }
 
     stages {
-        stage('Clone Public Repo') {
+        stage('Checkout Repo') {
             steps {
                 checkout scm
             }
@@ -14,10 +19,21 @@ pipeline {
 
         stage('Restart Nginx on Host') {
             steps {
-                sshagent(credentials: ['local-ssh']) {
-                    sh '''
-                        ssh -o StrictHostKeyChecking=no jijin@localhost "sudo systemctl restart nginx"
-                    '''
+                sshagent (credentials: ['local-ssh']) {
+                    sh """
+                        echo "Restarting Nginx on host $HOST..."
+                        ssh $SSH_OPTS jijin@$HOST 'sudo systemctl restart nginx'
+                    """
+                }
+            }
+        }
+
+        stage('Verify Nginx Status') {
+            steps {
+                sshagent (credentials: ['local-ssh']) {
+                    sh """
+                        ssh $SSH_OPTS jijin@$HOST 'systemctl status nginx | head -20'
+                    """
                 }
             }
         }
