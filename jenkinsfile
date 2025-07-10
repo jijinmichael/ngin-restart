@@ -1,41 +1,38 @@
 pipeline {
     agent any
 
-    triggers {
-        githubPush() // Trigger on GitHub push (requires webhook)
-    }
-
     environment {
-        HOST = "172.18.0.1"
-        SSH_OPTS = "-o StrictHostKeyChecking=no"
+        SSH_HOST = "172.18.0.1"
+        SSH_USER = "jijin"
     }
 
     stages {
-        stage('Checkout Repo') {
+        stage('Check Nginx Status on Host') {
             steps {
-                checkout scm
-            }
-        }
+                script {
+                    echo "🔍 Checking Nginx status on ${SSH_HOST}..."
 
-        stage('Restart Nginx on Host') {
-            steps {
-                sshagent (credentials: ['local-ssh']) {
-                    sh """
-                        echo "Restarting Nginx on host $HOST..."
-                        ssh $SSH_OPTS jijin@$HOST 'sudo systemctl restart nginx'
-                    """
+                    def status = sh(
+                        script: "ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} 'systemctl is-active nginx'",
+                        returnStdout: true
+                    ).trim()
+
+                    if (status == "active") {
+                        echo "✅ Nginx is running"
+                    } else {
+                        echo "❌ Nginx is NOT running (status: ${status})"
+                    }
                 }
             }
         }
+    }
 
-        stage('Verify Nginx Status') {
-            steps {
-                sshagent (credentials: ['local-ssh']) {
-                    sh """
-                        ssh $SSH_OPTS jijin@$HOST 'systemctl status nginx | head -20'
-                    """
-                }
-            }
+    post {
+        success {
+            echo "🎉 Pipeline completed"
+        }
+        failure {
+            echo "💥 Pipeline failed"
         }
     }
 }
