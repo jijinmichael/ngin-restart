@@ -1,0 +1,25 @@
+pipeline {
+    agent any
+
+    triggers {
+        githubPush() // Auto-trigger on GitHub push (via webhook)
+    }
+
+    stages {
+        stage('Clone Public Repo') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Restart Nginx on Host') {
+            steps {
+                sshagent(credentials: ['local-ssh']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no jijin@localhost "sudo systemctl restart nginx"
+                    '''
+                }
+            }
+        }
+    }
+}
