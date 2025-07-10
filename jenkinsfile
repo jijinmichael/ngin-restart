@@ -18,7 +18,7 @@ pipeline {
                     ).trim()
 
                     if (status == "active") {
-                        echo "✅ Nginx is running"
+                        echo "✅ Nginx is running.."
                     } else {
                         echo "❌ Nginx is NOT running (status: ${status})"
                     }
